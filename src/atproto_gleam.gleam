@@ -1,18 +1,33 @@
+import gleam/otp/actor
 import app/router
 import gleam/erlang/process
 import gleam/http/request
 import gleam/io
+import gleam/option.{None}
 import mist
 import stratus
 import wisp
 import wisp/wisp_mist
 
+pub type Msg {
+  Close
+  TimeUpdated(String)
+}
+
+pub type LogLevel {
+  Debug
+}
+
+pub type Log {
+  Level
+}
+
 pub fn main() {
   // This sets the logger to print INFO level logs, and other sensible defaults
   // for a web application.
   wisp.configure_logger()
-
   // Here we generate a secret key, but in a real application you would want to
+
   // load this from somewhere so that it is not regenerated on every restart.
   let secret_key_base = wisp.random_string(64)
 
@@ -48,6 +63,17 @@ pub fn main() {
       },
     )
     |> stratus.on_close(fn(_state) { io.println("oh noooo") })
+
+  let assert Ok(subj) = stratus.initialize(builder)
+
+  process.start(
+    fn() {
+      process.sleep(6000)
+
+      stratus.send(subj, Close)
+    },
+    True,
+  )
 
   // The web server runs in new Erlang process, so put this one to sleep while
   // it works concurrently.
